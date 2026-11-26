@@ -1065,14 +1065,17 @@ class firehose(metaclass=LogBase):
             if not rsp.resp:
                 for line in rsp.error:
                     if "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in line \
+                            or "Sector size in XML 4096 does not match disk sector size 512" \
                             or "different from device sector size (512)" in line:
                         self.cfg.SECTOR_SIZE_IN_BYTES = 512
                         return self.configure(0)
                     elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 2048" in line \
+                            or "Sector size in XML 4096 does not match disk sector size 2048" \
                             or "different from device sector size (2048)" in line:
                         self.cfg.SECTOR_SIZE_IN_BYTES = 2048
                         return self.configure(0)
                     elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in line \
+                            or "Sector size in XML 512 does not match disk sector size 4096" \
                             or "different from device sector size (4096)" in line:
                         self.cfg.SECTOR_SIZE_IN_BYTES = 4096
                         return self.configure(0)
