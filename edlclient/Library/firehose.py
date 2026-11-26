@@ -7,6 +7,7 @@
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import binascii
+import re
 import json
 import os.path
 import platform
@@ -1062,22 +1063,31 @@ class firehose(metaclass=LogBase):
                             "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
                         self.cfg.MemoryName = "eMMC"
                         return self.configure(0)
+
+            SECTOR_SIZE_RE = re.compile(
+                r"(?:"
+                r"Attribute 'SECTOR_SIZE_IN_BYTES'=(\d+) must be equal to disk sector size (\d+)"
+                r"|Sector size in XML (\d+) does not match disk sector size (\d+)"
+                r"|different from device sector size \((\d+)\)"
+                r")"
+            )
             if not rsp.resp:
                 for line in rsp.error:
-                    if "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in line \
-                            or "Sector size in XML 4096 does not match disk sector size 512" \
-                            or "different from device sector size (512)" in line:
-                        self.cfg.SECTOR_SIZE_IN_BYTES = 512
-                        return self.configure(0)
-                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 2048" in line \
-                            or "Sector size in XML 4096 does not match disk sector size 2048" \
-                            or "different from device sector size (2048)" in line:
-                        self.cfg.SECTOR_SIZE_IN_BYTES = 2048
-                        return self.configure(0)
-                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in line \
-                            or "Sector size in XML 512 does not match disk sector size 4096" \
-                            or "different from device sector size (4096)" in line:
-                        self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+                    match = SECTOR_SIZE_RE.search(line)
+                    if not match:
+                        continue
+                    groups = match.groups()
+                    
+                    if groups[0] is not None:
+                        xml_size, disk_size = map(int, groups[:2])
+                    elif groups[2] is not None:
+                        xml_size, disk_size = map(int, groups[2:4])
+                    else:
+                        xml_size = self.cfg.SECTOR_SIZE_IN_BYTES
+                        disk_size = int(groups[4])
+            
+                    if xml_size != disk_size:
+                        self.cfg.SECTOR_SIZE_IN_BYTES = disk_size
                         return self.configure(0)
             self.parse_storage()
             for function in self.supported_functions:
